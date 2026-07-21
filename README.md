@@ -1,6 +1,6 @@
 # Multi-Agent RAG: Data Retriever → Report Generator
 
-A minimal two-agent RAG pipeline built with [LangGraph](https://github.com/langchain-ai/langgraph).
+A minimal two-agent RAG pipeline built with [LangGraph](https://github.com/langchain-ai/langgraph), scaffolded from the official [LangGraph ReAct Agent template](https://github.com/langchain-ai/react-agent) (hence the `src/react_agent/` package name).
 
 - **Data Retriever** — a tool-calling agent whose only job is to search a local knowledge base (`knowledge_base.txt`) and return raw, relevant text chunks. It never answers the question itself.
 - **Report Generator** — a plain LLM call (no tools) that receives those chunks and synthesizes one cohesive, non-redundant, well-formatted answer.
@@ -120,6 +120,10 @@ make integration_tests  # integration tests (requires a working provider config)
 make lint               # ruff + mypy
 make format             # ruff format + import sort
 ```
+
+## Credits
+
+Built on top of [langchain-ai/react-agent](https://github.com/langchain-ai/react-agent), the LangGraph ReAct Agent template. The project skeleton — package layout, `langgraph.json`, `Makefile`, test setup, and the `Context`/`State` pattern — comes from there; the retrieval pipeline, vector search tool, prompts, and two-agent handoff are this project's own.
 
 ## License
 
