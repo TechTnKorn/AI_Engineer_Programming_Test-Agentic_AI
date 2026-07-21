@@ -1,92 +1,126 @@
-# LangGraph ReAct Agent Template
+# Multi-Agent RAG: Data Retriever → Report Generator
 
-[![CI](https://github.com/langchain-ai/react-agent/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/react-agent/actions/workflows/unit-tests.yml)
-[![Open in - LangGraph Studio](https://img.shields.io/badge/Open_in-LangGraph_Studio-00324d.svg?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4NS4zMzMiIGhlaWdodD0iODUuMzMzIiB2ZXJzaW9uPSIxLjAiIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHBhdGggZD0iTTEzIDcuOGMtNi4zIDMuMS03LjEgNi4zLTYuOCAyNS43LjQgMjQuNi4zIDI0LjUgMjUuOSAyNC41QzU3LjUgNTggNTggNTcuNSA1OCAzMi4zIDU4IDcuMyA1Ni43IDYgMzIgNmMtMTIuOCAwLTE2LjEuMy0xOSAxLjhtMzcuNiAxNi42YzIuOCAyLjggMy40IDQuMiAzLjQgNy42cy0uNiA0LjgtMy40IDcuNkw0Ny4yIDQzSDE2LjhsLTMuNC0zLjRjLTQuOC00LjgtNC44LTEwLjQgMC0xNS4ybDMuNC0zLjRoMzAuNHoiLz48cGF0aCBkPSJNMTguOSAyNS42Yy0xLjEgMS4zLTEgMS43LjQgMi41LjkuNiAxLjcgMS44IDEuNyAyLjcgMCAxIC43IDIuOCAxLjYgNC4xIDEuNCAxLjkgMS40IDIuNS4zIDMuMi0xIC42LS42LjkgMS40LjkgMS41IDAgMi43LS41IDIuNy0xIDAtLjYgMS4xLS44IDIuNi0uNGwyLjYuNy0xLjgtMi45Yy01LjktOS4zLTkuNC0xMi4zLTExLjUtOS44TTM5IDI2YzAgMS4xLS45IDIuNS0yIDMuMi0yLjQgMS41LTIuNiAzLjQtLjUgNC4yLjguMyAyIDEuNyAyLjUgMy4xLjYgMS41IDEuNCAyLjMgMiAyIDEuNS0uOSAxLjItMy41LS40LTMuNS0yLjEgMC0yLjgtMi44LS44LTMuMyAxLjYtLjQgMS42LS41IDAtLjYtMS4xLS4xLTEuNS0uNi0xLjItMS42LjctMS43IDMuMy0yLjEgMy41LS41LjEuNS4yIDEuNi4zIDIuMiAwIC43LjkgMS40IDEuOSAxLjYgMi4xLjQgMi4zLTIuMy4yLTMuMi0uOC0uMy0yLTEuNy0yLjUtMy4xLTEuMS0zLTMtMy4zLTMtLjUiLz48L3N2Zz4=)](https://langgraph-studio.vercel.app/templates/open?githubUrl=https://github.com/langchain-ai/react-agent)
+A minimal two-agent RAG pipeline built with [LangGraph](https://github.com/langchain-ai/langgraph).
 
-This template showcases a [ReAct agent](https://arxiv.org/abs/2210.03629) implemented using [LangGraph](https://github.com/langchain-ai/langgraph), designed for [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio). ReAct agents are uncomplicated, prototypical agents that can be flexibly extended to many tools.
+- **Data Retriever** — a tool-calling agent whose only job is to search a local knowledge base (`knowledge_base.txt`) and return raw, relevant text chunks. It never answers the question itself.
+- **Report Generator** — a plain LLM call (no tools) that receives those chunks and synthesizes one cohesive, non-redundant, well-formatted answer.
 
-![Graph view in LangGraph studio UI](./static/studio_ui.png)
+The two are orchestrated as a **sequential handoff**: the Retriever's raw *tool output* (not its own paraphrase) is passed into the Generator.
 
-The core logic, defined in `src/react_agent/graph.py`, demonstrates a flexible ReAct agent that iteratively reasons about user queries and executes actions, showcasing the power of this approach for complex problem-solving tasks.
+Retrieval uses **vector search** — the knowledge base is chunked, embedded once at import time, and each query is matched by cosine similarity, returning the `top_k` best chunks.
 
-## What it does
+## Graph
 
-The ReAct agent:
+```text
+__start__ → retrieve ─(tool_calls?)─→ tools ─→ generate → __end__
+                    └──────(no)───────────────↗
+```
 
-1. Takes a user **query** as input
-2. Reasons about the query and decides on an action
-3. Executes the chosen action using available tools
-4. Observes the result of the action
-5. Repeats steps 2-4 until it can provide a final answer
+| Node | File | What it does |
+| --- | --- | --- |
+| `retrieve` | [graph.py](src/react_agent/graph.py) | Data Retriever agent; decides to call `search_knowledge_base` |
+| `tools` | [tools.py](src/react_agent/tools.py) | Executes the vector search over the chunked knowledge base |
+| `generate` | [graph.py](src/react_agent/graph.py) | Report Generator agent; writes the final answer from the retrieved chunks |
 
-By default, it's set up with a basic set of tools, but can be easily extended with custom tools to suit various use cases.
+## Project layout
 
-## Getting Started
+```
+├── knowledge_base.txt          # the source knowledge base (edit this)
+├── knowledge_base_chunk.txt    # generated: chunk dump, for inspection/debugging
+├── utils.py                    # LLM + embedding provider selection (Azure / Ollama)
+├── langgraph.json              # exposes the `rag_agent` graph to LangGraph Studio
+└── src/react_agent/
+    ├── graph.py                # nodes, routing, graph assembly
+    ├── tools.py                # chunking, embedding, search_knowledge_base tool
+    ├── prompts.py              # system prompts for both agents
+    ├── context.py              # runtime-configurable settings (prompts, top_k)
+    └── state.py                # graph state schema
+```
 
-Assuming you have already [installed LangGraph Studio](https://github.com/langchain-ai/langgraph-studio?tab=readme-ov-file#download), to set up:
+## Setup
 
-1. Create a `.env` file.
+### 1. Create the environment
+
+```bash
+conda create -n {env name} python=3.12
+conda activate {env name}
+
+python -m pip install --upgrade pip
+pip install uv
+```
+
+### 2. Install dependencies
+
+```bash
+uv pip install -U "langgraph-cli[inmem]"
+uv pip install -e .
+```
+
+`uv pip install -e .` installs the project itself plus everything declared in [pyproject.toml](pyproject.toml) — `langgraph`, `langchain`, `langchain-openai`, `langchain-ollama`, `scikit-learn`, `sentence-transformers`, and so on. Installing it editable (`-e`) is what makes `import react_agent` and `import utils` resolve when the graph is loaded.
+
+### 3. Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-2. Define required API keys in your `.env` file.
+Then fill in `.env`:
 
-The primary [search tool](./src/react_agent/tools.py) [^1] used is [Tavily](https://tavily.com/). Create an API key [here](https://app.tavily.com/sign-in).
+| Variable | Notes |
+| --- | --- |
+| `LLM_PROVIDER` | `azure` or `ollama` |
+| `EMBEDDING_PROVIDER` | `azure` or `ollama` |
+| `AZURE_ENDPOINT` | e.g. `https://<resource>.openai.azure.com/` |
+| `AZURE_DEPLOYMENT` | chat model deployment name (e.g. `gpt-5-mini`) |
+| `AZURE_EMBEDDING_MODEL` | embedding deployment name (e.g. `text-embedding-3-small`) |
+| `AZURE_OPENAI_KEY` | Azure OpenAI API key |
+| `AZURE_OPENAI_VERSION` | e.g. `2024-10-21` |
+| `OLLAMA_BASE_URL` | e.g. `http://localhost:11434` |
+| `OLLAMA_MODEL` | chat model, e.g. `qwen3:8b` |
+| `OLLAMA_EMBEDDING_MODEL` | embedding model, e.g. `nomic-embed-text` |
 
-### Setup Model
+Only the block matching your chosen provider needs to be filled in. Provider selection happens in [utils.py](utils.py) — `select_llm_provider()` and `select_embedding_provider()`.
 
-The defaults values for `model` are shown below:
+### 4. Run
 
-```yaml
-model: claude-sonnet-4-5-20250929
+```bash
+langgraph dev
 ```
 
-Follow the instructions below to get set up, or pick one of the additional options.
+This starts the in-memory LangGraph server and opens LangGraph Studio, where you can send a query to the `rag_agent` graph and watch both agents execute. Local edits hot-reload.
 
-#### Anthropic
+## Usage
 
-To use Anthropic's chat models:
-
-1. Sign up for an [Anthropic API key](https://console.anthropic.com/) if you haven't already.
-2. Once you have your API key, add it to your `.env` file:
+Ask a question about whatever is in `knowledge_base.txt`:
 
 ```
-ANTHROPIC_API_KEY=your-api-key
-```
-#### OpenAI
-
-To use OpenAI's chat models:
-
-1. Sign up for an [OpenAI API key](https://platform.openai.com/signup).
-2. Once you have your API key, add it to your `.env` file:
-```
-OPENAI_API_KEY=your-api-key
+What is the policy on international travel?
 ```
 
-3. Customize whatever you'd like in the code.
-4. Open the folder LangGraph Studio!
+The Retriever pulls the most similar chunks; the Generator turns them into the final answer.
 
-## How to customize
+To use your own data, replace `knowledge_base.txt` and restart — chunking and embedding run at import time, so a restart is required for changes to take effect. `knowledge_base_chunk.txt` is regenerated on each start and is only there so you can eyeball how the text was split.
 
-1. **Add new tools**: Extend the agent's capabilities by adding new tools in [tools.py](./src/react_agent/tools.py). These can be any Python functions that perform specific tasks.
-2. **Select a different model**: We default to Anthropic's Claude 3 Sonnet. You can select a compatible chat model using `provider/model-name` via runtime context. Example: `openai/gpt-4-turbo-preview`.
-3. **Customize the prompt**: We provide a default system prompt in [prompts.py](./src/react_agent/prompts.py). You can easily update this via context in the studio.
+## Tuning
 
-You can also quickly extend this template by:
+| Setting | Where | Default |
+| --- | --- | --- |
+| `top_k` — chunks returned per query | [context.py](src/react_agent/context.py) (or via Studio context / `TOP_K` env var) | `3` |
+| `characters_per_chunk` | [tools.py](src/react_agent/tools.py) | `1000` |
+| `overlap_characters` | [tools.py](src/react_agent/tools.py) | `100` |
+| Agent instructions | [prompts.py](src/react_agent/prompts.py) | — |
 
-- Modifying the agent's reasoning process in [graph.py](./src/react_agent/graph.py).
-- Adjusting the ReAct loop or adding additional steps to the agent's decision-making process.
+The Retriever runs at `temperature=0.0` (deterministic tool selection); the Generator at `temperature=0.3` with streaming enabled.
 
 ## Development
 
-While iterating on your graph, you can edit past state and rerun your app from past states to debug specific nodes. Local changes will be automatically applied via hot reload. Try adding an interrupt before the agent calls tools, updating the default system message in `src/react_agent/context.py` to take on a persona, or adding additional nodes and edges!
+```bash
+make test               # unit tests
+make integration_tests  # integration tests (requires a working provider config)
+make lint               # ruff + mypy
+make format             # ruff format + import sort
+```
 
-Follow up requests will be appended to the same thread. You can create an entirely new thread, clearing previous history, using the `+` button in the top right.
+## License
 
-You can find the latest (under construction) docs on [LangGraph](https://github.com/langchain-ai/langgraph) here, including examples and other references. Using those guides can help you pick the right patterns to adapt here for your use case.
-
-LangGraph Studio also integrates with [LangSmith](https://smith.langchain.com/) for more in-depth tracing and collaboration with teammates.
-
-[^1]: https://python.langchain.com/docs/concepts/#tools
+MIT — see [LICENSE](LICENSE).
