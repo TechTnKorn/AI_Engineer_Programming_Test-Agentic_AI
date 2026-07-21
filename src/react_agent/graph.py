@@ -45,7 +45,6 @@ async def retrieve(state: State, runtime: Runtime[Context]) -> Dict[str, list]:
 async def generate(state: State, runtime: Runtime[Context]) -> Dict[str, str]:
     """Run the Report Generator agent over the retrieved snippets."""
 
-    # The raw tool output lives in the ToolMessage(s) the `tools` node appended.
     snippets = "\n\n".join(
         str(message.content)
         for message in state.get("messages") or []
@@ -58,15 +57,13 @@ async def generate(state: State, runtime: Runtime[Context]) -> Dict[str, str]:
 
     response = await generator_model.ainvoke([SystemMessage(content=system_message)])
 
-    return {"messages": str(response.content)}
+    return {"messages": [response], "snippets": snippets}
 
 def tool_router(state: State):
     """Route to tools if LLM made a tool call, otherwise go straight to save."""
     messages = state.get("messages") or []
     if not messages:
         return "generate"
-    # An AIMessage that calls a tool usually has *empty* .content, so the tool
-    # calls themselves are the only reliable signal here.
     return "tools" if getattr(messages[-1], "tool_calls", None) else "generate"
 
 builder = StateGraph(State, input_schema=InputState, context_schema=Context)

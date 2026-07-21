@@ -34,5 +34,4 @@ class InputState(TypedDict):
 class State(InputState):
     """The full state threaded through the graph, extending InputState."""
 
-    answer: NotRequired[str]
-    """The final, synthesized answer produced by the Report Generator agent."""
+    snippets: str

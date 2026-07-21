@@ -1,41 +1,33 @@
+import numpy as np
 from langchain_core.tools import tool
 from langgraph.runtime import get_runtime
-from langchain_community.retrievers import BM25Retriever
+from sklearn.metrics.pairwise import cosine_similarity
 
 from react_agent.context import Context
+from utils import select_embedding_provider
 
-characters_per_chunk = 500
-overlap_characters = 50
+characters_per_chunk = 1000
+overlap_characters = 100
 
 with open("knowledge_base.txt", "r") as f:
     raw_text = f.read()
 raw_text = raw_text.strip().replace("\n", " ")
 
-# Chunking
 knowledge_base = []
 for i in range(0, len(raw_text), characters_per_chunk):
-    if i + characters_per_chunk < len(raw_text):
-        if i > 0:
-            knowledge_base.append(
-                raw_text[i - overlap_characters : i + characters_per_chunk]
-            )    
-        else:
-            knowledge_base.append(raw_text[i : i + characters_per_chunk])
-    elif i + characters_per_chunk > len(raw_text):
-        knowledge_base.append(raw_text[i : len(raw_text)])
+    start = max(0, i - overlap_characters)
+    knowledge_base.append(raw_text[start : i + characters_per_chunk])
 
 chunks = ""
 for i, chunk in enumerate(knowledge_base):
-    # print(f"Chunk {i}: {chunk}")
-    chunks += f"Chunk {i}: {chunk}\n"    
+    chunks += f"Chunk {i}: {chunk}\n"
 
 # Write to file
 with open("knowledge_base_chunk.txt", "w") as f:
     f.write(chunks)
 
-bm25_retriever = BM25Retriever.from_texts(knowledge_base)
-bm25_retriever.k = len(knowledge_base)
-
+embedder = select_embedding_provider()
+chunk_embeddings = np.array(embedder.embed_documents(knowledge_base))
 
 @tool(description="Search knowledge base for paragraphs relevant to a query.")
 def search_knowledge_base(query: str) -> str:
@@ -45,13 +37,15 @@ def search_knowledge_base(query: str) -> str:
         query: The user's question or topic to search for.
     """
     runtime = get_runtime(Context)
-    top_k = runtime.context.top_k
+    top_k = int(runtime.context.top_k)
 
-    candidates = bm25_retriever.invoke(query)[:top_k]
-    if not candidates:
+    if not knowledge_base:
         return "No relevant information was found in the knowledge base."
-    print(candidates)
-    return "\n\n".join(doc.page_content for doc in candidates)
+
+    scores = cosine_similarity(chunk_embeddings, [embedder.embed_query(query)]).ravel()
+    ranked = np.argsort(scores)[::-1][:top_k]
+
+    return "\n\n".join(knowledge_base[index] for index in ranked)
 
 
 TOOLS = [search_knowledge_base]

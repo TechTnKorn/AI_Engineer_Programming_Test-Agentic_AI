@@ -1,5 +1,5 @@
-from langchain_openai import AzureChatOpenAI
-from langchain_ollama import ChatOllama
+from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
+from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 import os
 from dotenv import load_dotenv
@@ -9,6 +9,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 LLMModel = AzureChatOpenAI | ChatOllama
+EmbeddingModel = AzureOpenAIEmbeddings | OllamaEmbeddings
 
 def select_llm_provider(llm_provider: str=None, temperature: float=None, reasoning_effort: str=None, streaming: bool=True) -> LLMModel: # type: ignore
     """Select LLM by LLM_PROVIDER environment variable"""
@@ -40,5 +41,30 @@ def select_llm_provider(llm_provider: str=None, temperature: float=None, reasoni
             temperature=temperature,
             top_p=0.9
         )
-        
+
     return llm
+
+
+def select_embedding_provider(embedding_provider: str=None) -> EmbeddingModel: # type: ignore
+    """Select embedding model by EMBEDDING_PROVIDER environment variable"""
+
+    if embedding_provider is None:
+        embedding_provider = os.getenv("EMBEDDING_PROVIDER")
+
+    embeddings = None
+
+    if embedding_provider == "azure":
+        embeddings = AzureOpenAIEmbeddings(
+            model=os.getenv("AZURE_EMBEDDING_MODEL"),
+            azure_endpoint=os.getenv("AZURE_ENDPOINT"),
+            api_key=os.getenv("AZURE_OPENAI_KEY"),
+            api_version=os.getenv("AZURE_OPENAI_VERSION"),
+            azure_deployment=os.getenv("AZURE_EMBEDDING_MODEL"),
+        )
+    elif embedding_provider == "ollama":
+        embeddings = OllamaEmbeddings(
+            base_url=os.getenv("OLLAMA_BASE_URL"),
+            model=os.getenv("OLLAMA_EMBEDDING_MODEL"),
+        )
+
+    return embeddings
