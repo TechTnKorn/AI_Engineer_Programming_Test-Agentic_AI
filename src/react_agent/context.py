@@ -25,7 +25,7 @@ class Context:
     )
 
     top_k: int = field(
-        default=3,
+        default=5,
         metadata={
             "description": "The maximum number of knowledge-base snippets the "
             "Data Retriever tool should return per query."
