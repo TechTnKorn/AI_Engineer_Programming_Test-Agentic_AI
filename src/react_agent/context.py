@@ -1,38 +1,34 @@
-"""Define the configurable parameters for the agent."""
+"""Define the configurable parameters for the Retriever/Generator agent pair."""
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field, fields
-from typing import Annotated
 
 from . import prompts
 
 
 @dataclass(kw_only=True)
 class Context:
-    """The context for the agent."""
+    """Runtime-configurable settings for the RAG multi-agent graph."""
 
-    system_prompt: str = field(
-        default=prompts.SYSTEM_PROMPT,
+    retriever_system_prompt: str = field(
+        default=prompts.RETRIEVER_SYSTEM_PROMPT,
+        metadata={"description": "The system prompt for the Data Retriever agent."},
+    )
+
+    generator_system_prompt: str = field(
+        default=prompts.GENERATOR_SYSTEM_PROMPT,
         metadata={
-            "description": "The system prompt to use for the agent's interactions. "
-            "This prompt sets the context and behavior for the agent."
+            "description": "The system prompt template for the Report Generator agent."
         },
     )
 
-    model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
-        default="anthropic/claude-sonnet-4-5-20250929",
+    top_k: int = field(
+        default=3,
         metadata={
-            "description": "The name of the language model to use for the agent's main interactions. "
-            "Should be in the form: provider/model-name."
-        },
-    )
-
-    max_search_results: int = field(
-        default=10,
-        metadata={
-            "description": "The maximum number of search results to return for each search query."
+            "description": "The maximum number of knowledge-base snippets the "
+            "Data Retriever tool should return per query."
         },
     )
 

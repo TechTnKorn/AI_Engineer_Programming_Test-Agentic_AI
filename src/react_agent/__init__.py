@@ -1,8 +1,4 @@
-"""React Agent.
-
-This module defines a custom reasoning and action agent graph.
-It invokes tools in a simple loop.
-"""
+"""RAG multi-agent pipeline: Data Retriever -> Report Generator, built with LangGraph."""
 
 from react_agent.graph import graph
 
