@@ -9,10 +9,12 @@ from utils import select_embedding_provider
 characters_per_chunk = 1000
 overlap_characters = 100
 
+# Read file
 with open("knowledge_base.txt", "r") as f:
     raw_text = f.read()
 raw_text = raw_text.strip().replace("\n", " ")
 
+# Chunking
 knowledge_base = []
 for i in range(0, len(raw_text), characters_per_chunk):
     start = max(0, i - overlap_characters)
@@ -26,6 +28,7 @@ for i, chunk in enumerate(knowledge_base):
 with open("knowledge_base_chunk.txt", "w") as f:
     f.write(chunks)
 
+# Embedding
 embedder = select_embedding_provider()
 chunk_embeddings = np.array(embedder.embed_documents(knowledge_base))
 

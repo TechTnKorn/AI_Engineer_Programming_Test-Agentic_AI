@@ -9,7 +9,7 @@ which is a plain LLM call with no tools that synthesizes a final answer.
 from typing import Dict
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langgraph.graph import StateGraph
+from langgraph.graph import StateGraph, END
 from langgraph.runtime import Runtime
 from langgraph.prebuilt import ToolNode
 
@@ -64,7 +64,7 @@ def tool_router(state: State):
     messages = state.get("messages") or []
     if not messages:
         return "generate"
-    return "tools" if getattr(messages[-1], "tool_calls", None) else "generate"
+    return "tools" if getattr(messages[-1], "tool_calls", None) else "end"
 
 builder = StateGraph(State, input_schema=InputState, context_schema=Context)
 
@@ -73,7 +73,7 @@ builder.add_node("generate", generate)
 builder.add_node("tools", tool_node)
 
 builder.add_edge("__start__", "retrieve")
-builder.add_conditional_edges("retrieve", tool_router, {"tools": "tools", "generate": "generate"})
+builder.add_conditional_edges("retrieve", tool_router, {"tools": "tools", "end": END})
 builder.add_edge("tools", "generate")
 
 builder.add_edge("generate", "__end__")
