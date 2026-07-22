@@ -105,7 +105,7 @@ To use your own data, replace `knowledge_base.txt` and restart — chunking and 
 
 | Setting | Where | Default |
 | --- | --- | --- |
-| `top_k` — chunks returned per query | [context.py](src/react_agent/context.py) (or via Studio context / `TOP_K` env var) | `3` |
+| `top_k` — chunks returned per query | [context.py](src/react_agent/context.py) (or via Studio context / `TOP_K` env var) | `5` |
 | `characters_per_chunk` | [tools.py](src/react_agent/tools.py) | `1000` |
 | `overlap_characters` | [tools.py](src/react_agent/tools.py) | `100` |
 | Agent instructions | [prompts.py](src/react_agent/prompts.py) | — |
